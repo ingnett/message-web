@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Chat Application</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background-color: #667b91;
+        color: #e4e6eb;
+        height: 100vh;
+        display: flex;
+      }
+      .sidebar {
+        width: 20%;
+        background-color: #242526;
+        padding: 20px;
+        border-right: 1px solid #3a3b3c;
+        height: 100vh;
+        box-sizing: border-box;
+        overflow-y: auto;
+        width: 280px;
+        background: #1a1a1a;
+        padding: 20px 15px;
+      }
+      .sidebar h3 {
+        margin: 0 0 20px 0;
+        font-size: 18px;
+        color: #e4e6eb;
+      }
+      .sidebar a {
+        color: #b0b3b8;
+        text-decoration: none;
+        display: block;
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 5px;
+      }
+      .sidebar a:hover {
+        background-color: #3a3b3c;
+      }
+      .sidebar .logout {
+        position: absolute;
+        bottom: 20px;
+        width: 10%;
+        background-color: #3a3b3c;
+        text-align: center;
+      }
+      .chat-area {
+        width: 80%;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        box-sizing: border-box;
+      }
+      .chat-header {
+        padding: 15px 20px;
+        background-color: #242526;
+        border-bottom: 1px solid #3a3b3c;
+      }
+      .chat-header h2 {
+        margin: 0;
+        font-size: 18px;
+        color: #e4e6eb;
+      }
+      .chat-messages {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        background-color: #18191a;
+      }
+      .message {
+        margin-bottom: 15px;
+        display: flex;
+        align-items: flex-start;
+      }
+      .message.sent {
+        justify-content: flex-end;
+      }
+      .message.received {
+        justify-content: flex-start;
+      }
+      .message .avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background-color: #3a3b3c;
+        margin-right: 10px;
+        flex-shrink: 0;
+      }
+      .message.sent .avatar {
+        margin-left: 10px;
+        margin-right: 0;
+      }
+      .message-content {
+        max-width: 60%;
+      }
+      .message-content strong {
+        display: block;
+        font-size: 14px;
+        color: #e4e6eb;
+      }
+      .message-content .bubble {
+        padding: 10px 15px;
+        border-radius: 18px;
+        font-size: 14px;
+        margin: 5px 0;
+        word-wrap: break-word;
+      }
+      .message.sent .bubble {
+        background-color: #0084ff;
+        color: #ffffff;
+      }
+      .message.received .bubble {
+        background-color: #3a3b3c;
+        color: #e4e6eb;
+      }
+      .message-content small {
+        font-size: 12px;
+        color: #b0b3b8;
+        display: block;
+        margin-top: 5px;
+      }
+      .message.sent small {
+        text-align: right;
+      }
+      .message img {
+        max-width: 200px;
+        border-radius: 10px;
+        margin-top: 5px;
+      }
+      .message a {
+        color: #dee7ef;
+        text-decoration: none;
+      }
+      .message a:hover {
+        text-decoration: underline;
+      }
+      .chat-input {
+        padding: 15px 20px;
+        background-color: #242526;
+        border-top: 1px solid #3a3b3c;
+        display: flex;
+        align-items: center;
+      }
+      .chat-input form {
+        display: flex;
+        width: 100%;
+        align-items: center;
+      }
+      .chat-input input[type="file"] {
+        display: none;
+      }
+      .chat-input label {
+        cursor: pointer;
+        margin-right: 10px;
+        color: #b0b3b8;
+        font-size: 20px;
+      }
+      .chat-input textarea {
+        flex: 1;
+        background-color: #3a3b3c;
+        border: none;
+        border-radius: 20px;
+        padding: 10px 15px;
+        color: #e4e6eb;
+        resize: none;
+        font-size: 14px;
+        outline: none;
+      }
+      .chat-input button {
+        background-color: transparent;
+        border: none;
+        color: #0084ff;
+        font-size: 20px;
+        cursor: pointer;
+        margin-left: 10px;
+      }
+      .error {
+        color: #ff4d4f;
+        padding: 10px 20px;
+        font-size: 14px;
+      }
+      .no-selection {
+        padding: 20px;
+        text-align: center;
+      }
+      .no-selection h2 {
+        font-size: 18px;
+        margin: 0 0 10px 0;
+      }
+      .no-selection p {
+        font-size: 14px;
+        color: #b0b3b8;
+      }
+      .chat-area {
+        background: #0d0d0d;
+      }
+
+      .message .avatar {
+        background: linear-gradient(45deg, #ff6b6b, #43ffa4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+      }
+
+      .chat-messages::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .chat-messages::-webkit-scrollbar-thumb {
+        background: #4caf50;
+        border-radius: 4px;
+      }
+
+      .chat-input textarea {
+        min-height: 45px;
+        padding: 12px 20px;
+        font-size: 16px;
+      }
+
+      .message-content .bubble {
+        position: relative;
+        overflow: visible;
+      }
+
+      .message.sent .bubble:after {
+        content: "";
+        position: absolute;
+        right: -8px;
+        top: 15px;
+        width: 0;
+        height: 0;
+        border: 10px solid transparent;
+        border-left-color: #0084ff;
+      }
+
+      .message.received .bubble:after {
+        content: "";
+        position: absolute;
+        left: -8px;
+        top: 15px;
+        width: 0;
+        height: 0;
+        border: 10px solid transparent;
+        border-right-color: #3a3b3c;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="sidebar">
+      <h3>Online Users</h3>
+      <div>
+        {% for user in online_users %}
+        <p>
+          <a href="{{ url_for('chat', with=user) }}">{{ user }}</a>
+        </p>
+        {% else %}
+        <p>No other users online</p>
+        {% endfor %}
+      </div>
+      <a href="{{ url_for('logout') }}" class="logout">Logout</a>
+    </div>
+
+    <div class="chat-area">
+      {% if selected_user %}
+      <div class="chat-header">
+        <h2>Chat with {{ selected_user }}</h2>
+      </div>
+      {% if error %}
+      <p class="error">{{ error }}</p>
+      {% endif %}
+      <div class="chat-messages">
+        {% for msg in messages %}
+        <div
+          class="message {{ 'sent' if msg.sender == username else 'received' }}"
+        >
+          <div class="avatar"></div>
+          <div class="message-content">
+            <strong>{{ msg.sender }}</strong>
+            <div class="bubble">
+              {% if msg.type == 'file' and msg.file_url %} {% if
+              msg.file_url.split('.')[-1].lower() in ['png', 'jpg', 'jpeg',
+              'gif'] %}
+              <img
+                src="{{ msg.file_url }}"
+                alt="{{ msg.file_name or 'Shared image' }}"
+              />
+              {% else %}
+              <a href="{{ msg.file_url }}" target="_blank"
+                >{{ msg.file_name or 'View file' }}</a
+              >
+              <a
+                href="{{ msg.file_url.replace('static-files', 'download-file') }}"
+                download="{{ msg.file_name or 'file' }}"
+                style="margin-left: 10px"
+                >⬇️</a
+              >
+              {% endif %} {% else %} {{ msg.message }} {% endif %}
+            </div>
+            <small>{{ msg.timestamp }}</small>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="chat-input">
+        <form
+          action="{{ url_for('chat') }}"
+          method="POST"
+          enctype="multipart/form-data"
+        >
+          <input type="hidden" name="recipient" value="{{ selected_user }}" />
+          <label for="file-upload">📎</label>
+          <input
+            id="file-upload"
+            type="file"
+            name="file"
+            accept=".png,.jpg,.jpeg,.gif,.pdf,.doc,.docx,.txt"
+          />
+          <textarea name="message" placeholder="Type a message..."></textarea>
+          <button type="submit">➤</button>
+        </form>
+      </div>
+      {% else %}
+      <div class="no-selection">
+        <h2>No user selected</h2>
+        <p>Select a user from the sidebar to start chatting</p>
+      </div>
+      {% endif %}
+    </div>
+    <script>
+      const username = "{{ username }}";
+      const selectedUser = "{{ selected_user }}";
+
+      function escapeHtml(unsafe) {
+        return unsafe.replace(/[&<"'>]/g, function (m) {
+          return {
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#039;",
+          }[m];
+        });
+      }
+
+      function loadMessages() {
+        fetch(`/api/get_messages?user1=${username}&user2=${selectedUser}`)
+          .then((response) => response.json())
+          .then((data) => {
+            const chatBox = document.querySelector(".chat-messages");
+            chatBox.innerHTML = "";
+
+            data.messages.forEach((msg) => {
+              const messageEl = document.createElement("div");
+              messageEl.className = `message ${
+                msg.sender === username ? "sent" : "received"
+              }`;
+              messageEl.innerHTML = `
+                  <div class="avatar"></div>
+                  <div class="message-content">
+                    <strong>${escapeHtml(msg.sender)}</strong>
+                    <div class="bubble">
+                      ${
+                        msg.file_url
+                          ? /\.(png|jpe?g|gif)$/i.test(msg.file_url)
+                            ? `<img src="${msg.file_url}" alt="${
+                                msg.file_name || "Image"
+                              }">`
+                            : `<a href="${msg.file_url}" target="_blank">${
+                                msg.file_name || "Download file"
+                              }</a> <a href="${msg.file_url.replace(
+                                "/static-files/",
+                                "/download-file/"
+                              )}" download="${
+                                msg.file_name || "file"
+                              }" style="margin-left: 10px;">⬇️</a>`
+                          : escapeHtml(msg.message)
+                      }
+                    </div>
+                    <small>${msg.timestamp}</small>
+                  </div>
+                `;
+              chatBox.appendChild(messageEl);
+            });
+
+            // Auto scroll xuống cuối
+            chatBox.scrollTop = chatBox.scrollHeight;
+          });
+      }
+
+      // Gọi mỗi 1 giây
+      if (selectedUser) {
+        loadMessages(); // load ngay lần đầu
+        setInterval(loadMessages, 1000);
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat Server Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .online-users {
+            background-color: #f5f5f5;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        .user-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .user-list li {
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+        }
+        .server-info {
+            background-color: #e9f7fe;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Chat Server Dashboard</h1>
+    
+    <div class="server-info">
+        <h2>Server Information</h2>
+        <p><strong>Status:</strong> Running</p>
+        <p><strong>Online Users:</strong> <span id="online-count">{{ online_users|length }}</span></p>
+    </div>
+    <div class="online-users">
+        <h2>Online Users</h2>
+        <ul class="user-list" id="user-list">
+            {% for user in online_users %}
+            <li>{{ user }}</li>
+            {% else %}
+            <li>No users currently online</li>
+            {% endfor %}
+        </ul>
+    </div>
+    
+    <div style="margin-top: 30px; text-align: center;">
+        <p>Server is running and ready for connections</p>
+    </div>
+
+    <script>
+        function updateOnlineUsers() {
+            fetch('/api/online_users')
+                .then(response => response.json())
+                .then(data => {
+                    const userList = document.getElementById('user-list');
+                    const userCount = document.getElementById('online-count');
+                    userList.innerHTML = '';
+
+                    if (data.users.length > 0) {
+                        data.users.forEach(user => {
+                            const li = document.createElement('li');
+                            li.textContent = user;
+                            userList.appendChild(li);
+                        });
+                    } else {
+                        userList.innerHTML = '<li>No users currently online</li>';
+                    }
+
+                    userCount.textContent = data.users.length;
+                })
+                .catch(error => console.error('Failed to fetch online users:', error));
+        }
+
+        // Gọi lần đầu và sau đó mỗi 1 giây
+        updateOnlineUsers();
+        setInterval(updateOnlineUsers, 1000);
+    </script>
+</body>
+</html>
