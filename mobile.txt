@@ -1,0 +1,300 @@
+Models/Brand.cs:
+using System.ComponentModel.DataAnnotations;
+
+namespace ProductApi.Models
+{
+    public class Brand
+    {
+        public int Id { get; set; }
+
+        [Required]
+        [MaxLength(100)]
+        public string BrandName { get; set; }
+
+        [MaxLength(100)]
+        public string Country { get; set; }
+
+        public bool IsActive { get; set; } = true;
+
+        public List<Product> Products { get; set; }
+    }
+}
+
+Models/Product.cs:
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace ProductApi.Models
+{
+    public class Product
+    {
+        public int Id { get; set; }
+
+        [Required]
+        public string ProductName { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal Price { get; set; }
+
+        [Range(0, int.MaxValue)]
+        public int Stock { get; set; }
+
+        public bool IsAvailable { get; set; }
+
+        public int BrandId { get; set; }
+        public Brand Brand { get; set; }
+    }
+}
+
+Models/Order.cs:
+namespace ProductApi.Models
+{
+    public class Order
+    {
+        public int Id { get; set; }
+        public string CustomerName { get; set; }
+        public DateTime OrderDate { get; set; }
+        public decimal TotalAmount { get; set; }
+        public string Status { get; set; }
+
+        public List<OrderDetail> OrderDetails { get; set; }
+    }
+}
+
+Models/OrderDetail.cs:
+namespace ProductApi.Models
+{
+    public class OrderDetail
+    {
+        public int Id { get; set; }
+
+        public int OrderId { get; set; }
+        public Order Order { get; set; }
+
+        public int ProductId { get; set; }
+        public Product Product { get; set; }
+
+        public int Quantity { get; set; }
+        public decimal UnitPrice { get; set; }
+    }
+}
+
+Data/AppDbContext.cs:
+using Microsoft.EntityFrameworkCore;
+using ProductApi.Models;
+
+namespace ProductApi.Data
+{
+    public class AppDbContext : DbContext
+    {
+        public AppDbContext(DbContextOptions<AppDbContext> options)
+            : base(options) { }
+
+        public DbSet<Brand> Brands { get; set; }
+        public DbSet<Product> Products { get; set; }
+        public DbSet<Order> Orders { get; set; }
+        public DbSet<OrderDetail> OrderDetails { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Brand>()
+                .HasIndex(b => b.BrandName)
+                .IsUnique();
+
+            modelBuilder.Entity<Product>()
+                .HasOne(p => p.Brand)
+                .WithMany(b => b.Products)
+                .HasForeignKey(p => p.BrandId)
+                .OnDelete(DeleteBehavior.Restrict);
+        }
+    }
+}
+
+Dtos/ProductRequestDto.cs:
+using System.ComponentModel.DataAnnotations;
+
+namespace ProductApi.Dtos
+{
+    public class ProductRequestDto
+    {
+        [Required]
+        public string ProductName { get; set; }
+
+        [Range(0.01, double.MaxValue)]
+        public decimal Price { get; set; }
+
+        [Range(0, int.MaxValue)]
+        public int Stock { get; set; }
+
+        public int BrandId { get; set; }
+    }
+}
+
+Controllers/ProductsController.cs:
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using ProductApi.Data;
+using ProductApi.Dtos;
+
+namespace ProductApi.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class ProductsController : ControllerBase
+    {
+        private readonly AppDbContext _db;
+
+        public ProductsController(AppDbContext db)
+        {
+            _db = db;
+        }
+
+        // GET /api/products
+        [HttpGet]
+        public async Task<IActionResult> GetAll()
+        {
+            var data = await _db.Products
+                .Include(p => p.Brand)
+                .Select(p => new
+                {
+                    p.Id,
+                    p.ProductName,
+                    p.Price,
+                    p.Stock,
+                    BrandName = p.Brand.BrandName
+                })
+                .ToListAsync();
+
+            return Ok(data);
+        }
+
+        // GET /api/products/{id}
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetById(int id)
+        {
+            var product = await _db.Products.FindAsync(id);
+
+            if (product == null)
+                return NotFound(new { message = "Product not found" });
+
+            return Ok(product);
+        }
+
+        // POST /api/products
+        [HttpPost]
+        public async Task<IActionResult> Create(ProductRequestDto dto)
+        {
+            if (!ModelState.IsValid)
+                return ValidationProblem(ModelState);
+
+            var exists = await _db.Products.AnyAsync(p =>
+                p.ProductName == dto.ProductName &&
+                p.BrandId == dto.BrandId);
+
+            if (exists)
+                return Conflict(new { message = "Duplicate product in brand" });
+
+            var product = new Models.Product
+            {
+                ProductName = dto.ProductName.Trim(),
+                Price = dto.Price,
+                Stock = dto.Stock,
+                BrandId = dto.BrandId,
+                IsAvailable = dto.Stock > 0
+            };
+
+            await _db.Products.AddAsync(product);
+            await _db.SaveChangesAsync();
+
+            return Ok(product);
+        }
+
+        // PUT /api/products/{id}
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Update(int id, ProductRequestDto dto)
+        {
+            var product = await _db.Products.FindAsync(id);
+
+            if (product == null)
+                return NotFound(new { message = "Product not found" });
+
+            if (dto.Price < 0)
+                return BadRequest(new { message = "Price cannot be negative" });
+
+            product.ProductName = dto.ProductName;
+            product.Price = dto.Price;
+            product.Stock = dto.Stock;
+            product.IsAvailable = dto.Stock > 0;
+
+            await _db.SaveChangesAsync();
+
+            return Ok(product);
+        }
+
+        // DELETE /api/products/{id}
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var existsInOrder = await _db.OrderDetails
+                .AnyAsync(od => od.ProductId == id);
+
+            if (existsInOrder)
+                return Conflict(new { message = "Product in orders" });
+
+            var product = await _db.Products.FindAsync(id);
+            if (product == null)
+                return NotFound();
+
+            _db.Products.Remove(product);
+            await _db.SaveChangesAsync();
+
+            return Ok(new { message = "Deleted successfully" });
+        }
+    }
+}
+
+Controllers/StatisticsController.cs:
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using ProductApi.Data;
+
+namespace ProductApi.Controllers
+{
+    [ApiController]
+    [Route("api/statistics")]
+    public class StatisticsController : ControllerBase
+    {
+        private readonly AppDbContext _db;
+
+        public StatisticsController(AppDbContext db)
+        {
+            _db = db;
+        }
+
+        [HttpGet("products-by-brand")]
+        public async Task<IActionResult> ProductsByBrand()
+        {
+            var data = await _db.Products
+                .Include(p => p.Brand)
+                .GroupBy(p => p.Brand.BrandName)
+                .Select(g => new
+                {
+                    BrandName = g.Key,
+                    TotalProducts = g.Count()
+                })
+                .ToListAsync();
+
+            return Ok(data);
+        }
+
+        [HttpGet("total-stock")]
+        public async Task<IActionResult> TotalStock()
+        {
+            var total = await _db.Products.SumAsync(p => p.Stock);
+            return Ok(new { TotalStock = total });
+        }
+    }
+}
+
+Add-Migration Init
+Update-Database
